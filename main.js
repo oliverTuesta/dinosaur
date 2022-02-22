@@ -3,10 +3,12 @@ const context = game_canvas.getContext('2d');
 
 // Variables
 let score;
+let scoreText;
 let highscore;
+let highscoreText;
 let player;
 let gravity;
-let obstacles;
+let obstacles = [];
 let gameSpeed;
 let keys = {};
 
@@ -17,8 +19,33 @@ document.addEventListener('keydown', function (evt) {
 
 document.addEventListener('keyup', function (evt) {
     keys[evt.code] = false;
-    console.log(keys);
 });
+
+class Obstacle {
+    constructor(x, y, w, h, c) {
+        this.x = x;
+        this.y = y;
+        this.w = w;
+        this.h = h;
+        this.c = c;
+
+        this.dx = -gameSpeed;
+    }
+
+    Update() {
+        this.x += this.dx;
+        this.Draw();
+        this.dx = -gameSpeed;
+    }
+
+    Draw() {
+        context.beginPath();
+        context.fillStyle = this.c;
+        context.fillRect(this.x, this.y, this.w, this.h);
+        context.closePath();
+    }
+
+}
 
 class Player {
     constructor(x, y, w, h, c) {
@@ -32,16 +59,27 @@ class Player {
         this.jumpForce = 10;
         this.originalHeight = h;
         this.grounded = false;
+        this.duck = false;
 
     }
 
     Animate() {
         // Jump
-        if (keys['Space'] || keys['KeyW'])
+        if ((keys['Space'] || keys['KeyW'] || keys['ArrowUp']) && !this.duck)
             this.Jump();
         else
             this.jumpTimer = 0;
 
+        if (keys['ShiftLeft'] || keys['KeyS'] || keys['ArrowDown']) {
+
+            this.h = this.originalHeight / 2;
+            this.y += this.h;
+            this.duck = true;
+        }
+        else {
+            this.duck = false
+            this.h = this.originalHeight;
+        }
         this.y += this.dy;
         // Gravity
         if (this.y + this.h < game_canvas.height) {
@@ -76,6 +114,41 @@ class Player {
 
 }
 
+class Text {
+    constructor(t, x, y, a, c, s) {
+        this.t = t;
+        this.x = x;
+        this.y = y;
+        this.a = a;
+        this.c = c;
+        this.s = s;
+
+    }
+
+    Draw() {
+        context.beginPath();
+        context.fillStyle = this.c;
+        context.font = this.s + "px sans-serif";
+        context.textAlign = this.a;
+        context.fillText(this.t, this.x, this.y);
+        context.closePath();
+    }
+}
+
+// Game Functions
+function SpawnObstacle() {
+    let size = RandomIntInRange(20, 50);
+    let type = RandomIntInRange(0, 1);
+    let obstacle = new Obstacle(game_canvas.width + size, game_canvas.height - size, size, size, '#e52270');
+    if (type == 1) {
+        obstacle.y -= player.originalHeight - 10;
+    }
+    obstacles.push(obstacle);
+}
+
+const RandomIntInRange = (min, max) => Math.round(Math.random() * (max - min) + min);
+
+
 function Start() {
     //game_canvas.width = window.innerWidth;
     //game_canvas.height = window.innerHeight;
@@ -86,18 +159,66 @@ function Start() {
     gravity = 1;
     score = 0;
     highscore = 0;
+    if (localStorage.getItem('highscore')){
+        highscore = localStorage.getItem('highscore');
+    }
 
-    player = new Player(25, game_canvas.height - 150, 50, 50, '#1d43b7');
+    player = new Player(25, 30, 50, 50, '#1d43b7');
+
+    scoreText = new Text("Score: " + score, 25, 25, "left", "#212121", "20");
+    highscoreText = new Text("Score: " + highscore, game_canvas.width - 25, 25, "right", "#212121", "20");
 
     requestAnimationFrame(Update);
 
 }
 
+let initialSpawnTimer = 200;
+let spawnTimer = initialSpawnTimer;
+
 function Update() {
     requestAnimationFrame(Update);
     context.clearRect(0, 0, game_canvas.width, game_canvas.height);
 
+    spawnTimer--;
+    if (spawnTimer <= 0) {
+        SpawnObstacle();
+        spawnTimer = initialSpawnTimer - gameSpeed * 8;
+
+        if (spawnTimer < 60) {
+            spawnTimer = 60;
+        }
+    }
+
+    // Spawn Enemies
+    for (let i = 0; i < obstacles.length; i++) {
+        let o = obstacles[i];
+        o.Update();
+        if (o.x + o.w <= 0)
+            obstacles.splice(1, i);
+    // Colission 
+        if (player.x < o.x + o.w &&
+            player.x + player.w > o.x &&
+            player.y < o.y + o.h &&
+            player.y + player.h > o.y) {
+            obstacles = [];
+            score = 0;
+            spawnTimer = initialSpawnTimer;
+            gameSpeed = 3;
+            window.localStorage.setItem('highscore', highscore);
+        }
+
+    }
+
+
+    score += 0.25;
+    highscore = Math.floor(score) > highscore ? score : highscore;
+    scoreText.t = "Score: " + Math.floor(score);
+    scoreText.Draw();
+    highscoreText.t = "Highscore: " + Math.floor(highscore);
+    highscoreText.Draw();
     player.Animate();
+
+    gameSpeed += 0.003;
 }
 
 Start();
