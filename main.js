@@ -10,6 +10,7 @@ let player;
 let gravity;
 let obstacles = [];
 let gameSpeed;
+let gameSpeedAux;
 let keys = {};
 
 // Event liesteners
@@ -105,6 +106,22 @@ class Player {
             this.dy = -this.jumpForce - this.jumpTimer / 50;
         }
     }
+
+    MoveRight() {
+        if (this.x < game_canvas.width - this.w) this.x += 2;
+    }
+    MoveLeft() {
+        if (this.x > 0) this.x -= 2;
+    }
+
+    Respawn() {
+        this.x = this.w / 2;
+        this.y = game_canvas.height / 2 - this.h / 2;
+        this.dy = 0;
+        this.grounded = false;
+        this.duck = false;
+        this.h = this.originalHeight;
+    }
 }
 
 class Text {
@@ -153,7 +170,7 @@ function Start() {
 
     context.font = '20px sans-serif';
 
-    gameSpeed = 3;
+    gameSpeed = gameSpeedAux = 3;
     gravity = 1;
     score = 0;
     highscore = 0;
@@ -205,6 +222,7 @@ function Update() {
             player.y < o.y + o.h &&
             player.y + player.h > o.y
         ) {
+            player.Respawn();
             obstacles = [];
             score = 0;
             spawnTimer = initialSpawnTimer;
@@ -221,7 +239,17 @@ function Update() {
     highscoreText.Draw();
     player.Animate();
 
-    gameSpeed += 0.003;
+    gameSpeedAux += 0.003;
+    gameSpeed = gameSpeedAux;
+    if (keys['ArrowRight']) {
+        player.MoveRight();
+        gameSpeed = gameSpeedAux + gameSpeedAux / 8;
+    } else if (keys['ArrowLeft']) {
+        player.MoveLeft();
+        gameSpeed = gameSpeedAux - gameSpeedAux / 4;
+    } else {
+        gameSpeedAux = gameSpeed;
+    }
 }
 
 Start();
