@@ -226,7 +226,7 @@ function Update() {
             obstacles = [];
             score = 0;
             spawnTimer = initialSpawnTimer;
-            gameSpeed = 3;
+            gameSpeed = 1.5;
             window.localStorage.setItem('highscore', highscore);
         }
     }
